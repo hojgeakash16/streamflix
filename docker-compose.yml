@@ -1,0 +1,37 @@
+# Run the whole 3-tier app locally:  docker compose up --build
+# Then open http://localhost:5173
+services:
+  db:                       # Tier 3: data
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: streamflix
+      POSTGRES_PASSWORD: streamflix
+      POSTGRES_DB: streamflix
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:                      # Tier 2: application logic
+    build: ./backend
+    environment:
+      DB_HOST: db
+      JWT_SECRET: local-dev-secret
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+
+  web:                      # Tier 1: presentation (Vite dev server proxies /api to the api service)
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    environment:
+      API_TARGET: http://api:3000
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
